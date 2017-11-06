@@ -27,6 +27,8 @@ tanl(i+1,2) = tanl(i,2);
 
 [~,locs] = findpeaks(abs(tanl(:,2)));
 
+locs = [1;locs;length(tanl)];
+
 tans = tanl(locs,2);
 angl = atan(tans);
 
@@ -50,24 +52,23 @@ couple2 = line(locs(min_id:min_id+1),:);
 couple = [couple1;couple2];
 
 if nargout>3
+    xx = [-100,100];
+    
     tan_u = -1/tans(max_id);
     tan_d = -1/tans(max_id+1);
-    xx = -200:0.01:200 ;
+    
     yyu = tan_u.*xx +couple1(1,2);
-    yyu(yyu>couple1(1,2)+200) = 0 ; yyu(yyu<couple1(1,2)-200) = 0;
     xxu = xx+couple1(1,1);
+    
     yyd = tan_d.*xx +couple1(2,2);
-    yyd(yyd>couple1(1,2)+200) = 0 ; yyd(yyd<couple1(1,2)-200) = 0;
     xxd = xx+couple1(2,1);
     varargout{1} = { xxu ;yyu ; xxd ;yyd };
     
     tan_u = -1/tans(min_id);
     tan_d = -1/tans(min_id+1);
     yyu = tan_u.*xx +couple2(1,2);
-    yyu(yyu>couple2(1,2)+200) = 0 ; yyu(yyu<couple2(1,2)-200) = 0;
     xxu = xx+couple2(1,1);
     yyd = tan_d.*xx +couple2(2,2);
-    yyd(yyd>couple2(1,2)+200) = 0 ; yyd(yyd<couple2(1,2)-200) = 0;
     xxd = xx+couple2(2,1);    
     varargout{2} = { xxu ;yyu ; xxd ;yyd };
 end

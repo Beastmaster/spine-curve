@@ -1,6 +1,9 @@
 %%% 
+% Date: 2017/7/4
 % find symmetry line with cross entropy
 %
+%
+% To be continued
 
 
 

@@ -9,10 +9,10 @@
 % output file: dicom filename and cobb angle
 function bundle_process(list)
 %%%%% Required parameters %%%%
-dst_dir = 'D:\Project\spine_seg_spline\temp\test_res_622';
+dst_dir = 'D:\Project\spine_seg_spline\temp\test_1106';
 files = importdata(list);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+bImShow=0;
 output = [];
 fail = [];
 log = fullfile(dst_dir,'output.txt');
@@ -33,7 +33,7 @@ for i = 1:length(files)
            output = [output;cellstr(str)];
            disp(str);
            fprintf(fid,'%s\n',str);
-          
+           
             % display
             imshow(img,[]); hold on;
             scatter(curve(2,:),curve(1,:),5,'.'); hold on;
@@ -54,11 +54,14 @@ for i = 1:length(files)
             F = getframe();
             Image = frame2im(F);
             imwrite(Image, jpg_name);
-            close all;
+            
             
        catch
            fail = [fail;cellstr(filename)];
        end
+       
+       
+       
    %end
 end
 

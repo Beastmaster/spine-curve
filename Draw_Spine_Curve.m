@@ -22,7 +22,7 @@ function varargout = Draw_Spine_Curve(varargin)
 
 % Edit the above text to modify the response to help Draw_Spine_Curve
 
-% Last Modified by GUIDE v2.5 18-Nov-2016 16:52:59
+% Last Modified by GUIDE v2.5 06-Nov-2017 18:58:00
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,6 +55,21 @@ function Draw_Spine_Curve_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for Draw_Spine_Curve
 handles.output = hObject;
 
+%%%%% configs
+handles.scatter_size = 5;
+handles.scatter_type = 'b--o';
+handles.plot_type='LineWidth';
+handles.plot_size = 2.5;
+handles.color1 = [1,0,0];
+handles.color2 = [1,1,0];
+handles.color3 = [0,0,1];
+handles.showPID = 1;
+
+if ~isfield(handles,'root_dir')
+    handles.root_dir = 'D:\Project\spine_seg_spline\temp\test_dcm_531\*.dcm';
+%'C:\Users\qinsh\OneDrive\Project\Graduation2017\journal\test_images/*.dcm');
+end
+
 %%%% open dicom image
 open_icon = imread('resources/load.PNG');
 open_icon(open_icon>250) = 245;
@@ -71,37 +86,19 @@ name = strrep(name,'\','/');
 %labelTop=['<HTML><center><h2>Load EOS </h2> <img src ="file:' name '" align="bottom"></HTML>'];
 %labelBot=['<div style="font-family:impact;color:green"><i>What a</i>'...
 %          ' <Font color="blue" face="Comic Sans MS">nice day!'];
-labelTop=['<HTML><center><h2>Load EOS</h2> </HTML>'];
+labelTop=['<HTML><center><h3>Load EOS</h3> </HTML>'];
 set(handles.open_Btn, 'string',labelTop );
-
-%%%% auto generate curve
-name = fullfile(dd,'resources/center.PNG');
-name = strrep(name,'\','/');
-%labelTop=['<HTML><center><img src ="file:' name '" align="bottom"></HTML>'];
-labelTop=['<HTML><center><h2> Fit </h2> </HTML>'];
-set(handles.fit_Btn, 'string',labelTop );
 
 
 %%%% adjust new curve
 name = fullfile(dd,'resources/adj.PNG');
 name = strrep(name,'\','/');
-labelTop=['<HTML> <table frame="border"><tr><center><h2> ADJUST </h2> <tr></table></HTML>'];
+labelTop=['<HTML> <table frame="border"><tr><center><h3> ADJUST </h3> <tr></table></HTML>'];
 set(handles.adjust_Btn, 'string',labelTop );
 
-%%%%% calculate cobb
-cal_icon = imread('resources/cal.PNG');
-cal_icon(cal_icon>250) = 245;
-%cal_icon = imresize(cal_icon,[aa,bb],'bilinear' );
-%set(handles.done_Btn,'String',' ');
-%set(handles.done_Btn,'CData',cal_icon);
-labelTop = ['<HTML><center><h3> Calculate <br> Cobb Angle </h3></HTML>'];
-set(handles.done_Btn, 'string',labelTop );
 
-%%% arrow
-arr_icon = imread('resources/arrow.PNG');
-arr_icon(arr_icon>250) = 240;
-imshow(arr_icon,'Parent',handles.axes2);
-imshow(arr_icon,'Parent',handles.axes3);
+%%%% fill display
+imshow(ones(2000,1000),[],'Parent',handles.axes1);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -128,7 +125,7 @@ function open_Btn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
 
-[filename, pathname] = uigetfile('D:\Project\spine_seg_spline\temp\test_dcm_531\*.dcm','File Selector'); %,'E:\EOS Image_lily\lily'
+[filename, pathname] = uigetfile(handles.root_dir,'File Selector');
 file = fullfile(pathname,filename);
 if filename == 0
     return;
@@ -138,23 +135,18 @@ handles.FileName = file;
 handles.Ori_Image = dicomread(file);
 %handles.Resize_Image = imresize(handles.Ori_Image,0.5);
 handles.Resize_Image = handles.Ori_Image;
-imshow(handles.Resize_Image,[],'Parent',handles.axes1);
+imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
 handles.Adj = 1;
 
-guidata(hObject, handles);
-
-
-% --- Executes on button press in fit_Btn.
-function fit_Btn_Callback(hObject, eventdata, handles)
-% hObject    handle to fit_Btn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-handles.output = hObject;
-if ~isfield(handles,'Ori_Image')
-    msgbox('Please load an image in the first !');
-    return;
+info = dicominfo(file);
+handles.pid = info.PatientID;
+if handles.showPID == 0
+    handles.pid(3:end)='*';
 end
+set(handles.id_txt,'string',handles.pid);
 
+
+%------ fit
 if handles.Adj == 1
     [handles.Curve,handles.Bin_Image] = GrayScaleBased('process',handles.Ori_Image);
     handles.Adj = 2;
@@ -163,8 +155,42 @@ else
     [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
 end
 
+%---------
+if ~isfield(handles,'Curve')
+    msgbox('No spine line generated !');
+    return;
+end
+
+vv = handles.Curve';
+[handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
+
+% display
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,5,'.'); hold(handles.axes1,'off');
+scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
+line1 = cell2mat(line1); line2 = cell2mat(line2);
+plot(line1(2,:),line1(1,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line1(4,:),line1(3,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(2,:),line2(1,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(4,:),line2(3,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+
+ang1 = handles.Angle(1);
+set(handles.cobb_Edit,'String',num2str(ang1));
+ang2 = handles.Angle(2);
+set(handles.cobb_Edit2,'String',num2str(ang2));
+
+if(0)
+ang1_upper = str2num(get(handles.ang1_upper,'String'));
+ang1_lower = str2num(get(handles.ang1_lower,'String'));
+ang2_upper = str2num(get(handles.ang2_upper,'String'));
+ang2_lower = str2num(get(handles.ang2_lower,'String'));
+end
+
+[~,nn,~] = fileparts(handles.FileName);
+ss = {nn;handles.Ori_Image;handles.Curve'};
+fn = strcat(nn,'.mat');
+fn = fullfile('D:\Project\spine-curve\statistics\manual_method',fn);
+disp(fn);
+%save(fn,'ang1','ang1_upper','ang1_lower','ang2','ang2_upper','ang2_lower');
 
 guidata(hObject, handles);
 
@@ -176,7 +202,7 @@ function adjust_Btn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
 
-if ~isfield(handles,'Ori_Image')
+if 0 %~isfield(handles,'Ori_Image')
     msgbox('Please load an image in the first !');
     return;
 end
@@ -185,56 +211,39 @@ if handles.Adj == 1
     [handles.Curve,handles.Bin_Image] = GrayScaleBased('process',handles.Ori_Image);
     handles.Adj = 2;
 else
-    pos = ginput(1)/2;
-    [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image/2,pos); 
+    [posx,posy,but] = fginput(1,handles.axes1);
+    if(but==27 || but==13)
+        ;
+    else
+        pos=[posx,posy]/2;
+        if length(pos)>1
+            [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image/2,pos); 
+        end
+    end
 end
 
+cla reset;
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,5,'.'); hold(handles.axes1,'off');
-
-guidata(hObject, handles);
-
-
-% --- Executes on button press in done_Btn.
-% Calcualte cobb angle
-function done_Btn_Callback(hObject, eventdata, handles)
-% hObject    handle to done_Btn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-handles.output = hObject;
-
-if ~isfield(handles,'Curve')
-    msgbox('No spine line generated !');
-    return;
-end
+scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
 
 vv = handles.Curve';
 [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
-
-% display
-imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,5,'.'); hold(handles.axes1,'on');
 line1 = cell2mat(line1); line2 = cell2mat(line2);
-scatter(line1(2,:),line1(1,:),'Parent',handles.axes1,5,'filled--o');hold(handles.axes1,'on');
-scatter(line1(4,:),line1(3,:),'Parent',handles.axes1,5,'filled--o');hold(handles.axes1,'on');
-scatter(line2(2,:),line2(1,:),'Parent',handles.axes1,5,'filled--o');hold(handles.axes1,'on');
-scatter(line2(4,:),line2(3,:),'Parent',handles.axes1,5,'filled--o');hold(handles.axes1,'off');
+plot(line1(2,:),line1(1,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line1(4,:),line1(3,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(2,:),line2(1,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(4,:),line2(3,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
 
 ang = num2str(handles.Angle(1));
 set(handles.cobb_Edit,'String',ang);
 ang = num2str(handles.Angle(2));
 set(handles.cobb_Edit2,'String',ang);
 
-[~,nn,~] = fileparts(handles.FileName);
-ss = {nn;handles.Ori_Image;handles.Curve'};
-fn = strcat(nn,'.mat');
-%save(fn,'ss');
-
 guidata(hObject, handles);
 
 
 
-function cobb_Edit_Callback(hObject, eventdata, handles)
+function cobb_Edit_Callback(~, ~, ~)
 % hObject    handle to cobb_Edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -244,7 +253,7 @@ function cobb_Edit_Callback(hObject, eventdata, handles)
 
 
 % --- Executes during object creation, after setting all properties.
-function cobb_Edit_CreateFcn(hObject, eventdata, handles)
+function cobb_Edit_CreateFcn(hObject, ~, ~)
 % hObject    handle to cobb_Edit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -259,7 +268,7 @@ end
 
 
 % --------------------------------------------------------------------
-function save_Opt_Callback(hObject, eventdata, handles)
+function save_Opt_Callback(hObject, ~, handles)
 % hObject    handle to save_Opt (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -277,7 +286,7 @@ guidata(hObject, handles);
 
 
 
-function cobb_Edit2_Callback(hObject, eventdata, handles)
+function cobb_Edit2_Callback(~, ~, ~)
 % hObject    handle to cobb_Edit2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -287,7 +296,7 @@ function cobb_Edit2_Callback(hObject, eventdata, handles)
 
 
 % --- Executes during object creation, after setting all properties.
-function cobb_Edit2_CreateFcn(hObject, eventdata, handles)
+function cobb_Edit2_CreateFcn(hObject, ~, ~)
 % hObject    handle to cobb_Edit2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -297,4 +306,145 @@ function cobb_Edit2_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-   
+
+
+
+function ang1_upper_Callback(hObject, eventdata, handles)
+% hObject    handle to ang1_upper (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ang1_upper as text
+%        str2double(get(hObject,'String')) returns contents of ang1_upper as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ang1_upper_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ang1_upper (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ang1_lower_Callback(hObject, eventdata, handles)
+% hObject    handle to ang1_lower (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ang1_lower as text
+%        str2double(get(hObject,'String')) returns contents of ang1_lower as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ang1_lower_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ang1_lower (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ang2_upper_Callback(hObject, eventdata, handles)
+% hObject    handle to ang2_upper (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ang2_upper as text
+%        str2double(get(hObject,'String')) returns contents of ang2_upper as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ang2_upper_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ang2_upper (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ang2_lower_Callback(hObject, eventdata, handles)
+% hObject    handle to ang2_lower (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ang2_lower as text
+%        str2double(get(hObject,'String')) returns contents of ang2_lower as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ang2_lower_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ang2_lower (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --------------------------------------------------------------------
+function Copyright_Callback(hObject, eventdata, handles)
+% hObject    handle to Copyright (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+msgbox({'Copyright:';'CUHK: Dept.Ort'});
+
+
+
+
+% --------------------------------------------------------------------
+function Options_Callback(hObject, eventdata, handles)
+% hObject    handle to Options (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --------------------------------------------------------------------
+function base_dir_Callback(hObject, eventdata, handles)
+% hObject    handle to base_dir (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+tmp_dir = uigetdir();
+if(isdir(tmp_dir))
+    handles.root_dir = fullfile(tmp_dir,'*.dcm');
+end
+guidata(hObject, handles);
+
+
+
+% --------------------------------------------------------------------
+function hid_id_Callback(hObject, eventdata, handles)
+% hObject    handle to hid_id (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+if handles.showPID==1
+    handles.showPID=0;
+    set(handles.hid_id,'Label','Show ID');
+else
+    handles.showPID=1;
+    set(handles.hid_id,'Label','Hide ID');
+end
+
+guidata(hObject, handles);
+
+

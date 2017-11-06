@@ -103,7 +103,7 @@ elseif strcmp('process',varargin{1})
 
 %[curve,output] = GrayScaleBased('update',bin_img,pos);
 elseif strcmp('update',varargin{1})
-    [curve,output] = update_curve(varargin{2},varargin(3));
+    [curve,output] = update_curve(varargin{2},varargin(3),1e-9);
     varargout{1} = curve*2;
     varargout{2} = output;
 end
@@ -119,10 +119,9 @@ end
 %   varargout{2}: gard: thresholded gradient map
 %   varargout{3}: smth: smoothed original image
 function [curve,varargout]= process(img)
- hw = waitbar(0,'Processing ...');
 % Parameters
 p=0.000000001;
-p=0.00000001;
+p=1e-9;
 iterations = 3; % RANSAC iteration
 distance = 200; % ROI extent around the spine line
 
@@ -132,31 +131,43 @@ img_ori = imresize(img,0.5);
 
 % Pre process
 % output is a image: threshold -> overlay line ROI
-waitbar(1/5);
-[output smth]= pre_process(img_ori);
+[th_im smth]= pre_process(img_ori);
 % strip head and pelvis
-pos = strip_head_pelvis(img_ori,'head');  %pos = int16(pos/2);
-smth(1:pos,:)=0;
-output(1:pos,:)=0;
-
-pos = strip_head_pelvis(img_ori,'pelvis');  %pos = int16(pos/2);
-smth(pos:end,:)=0;
-output(pos:end,:)=0;
+pos_head = strip_head_pelvis(img_ori,'head')+100;  %pos = int16(pos/2);
+pos_pelvis = strip_head_pelvis(img_ori,'pelvis');  %pos = int16(pos/2);
 
 % Generate gradient map
-grad = gradient(smth);
-grad(:,1:width*1/4) = 0;
-grad(:,width*3/4:width) = 0;
-grad(grad<0) = 0;
-grad = threshold_histogram(grad,0.01);
-waitbar(2/5);
+grad_ori = abs(gradient(smth));
+grad_crop_1=grad_ori;
+grad_crop_1(:,1:width*1/4) = 0;
+grad_crop_1(:,width*3/4:width) = 0;
+grad_crop_1_th=grad_crop_1;
+grad_crop_1_th(grad_crop_1_th<0) = 0;
+
+grad_th = threshold_histogram(grad_crop_1_th,0.01);
+
+% crop
+smth_crop=smth;
+smth_crop(1:pos_head,:)=0;
+smth_crop(pos_pelvis:end,:)=0;
+
+grad_crop_2=grad_th;
+grad_crop_2(1:pos_head,:)=0;
+grad_crop_2(pos_pelvis:end,:)=0;
+
+th_im_crop=th_im;
+th_im_crop(1:pos_head,:)=0;
+th_im_crop(pos_pelvis:end,:)=0;
 
 % curve fitting with RANSAC
+grad = grad_crop_2;
+th_img = th_im_crop;
 for itr = 1:iterations
-    waitbar(itr/iterations);
     % Way 1
-    output = output+grad;
-    [row,col] = find(output~=0);
+    fusion = th_img+grad;
+    
+    [row,col] = find(fusion~=0);
+    disp(num2str(length(row)));
     row = row(1:5:length(row));
     col = col(1:5:length(col));
     % Way 2
@@ -166,32 +177,48 @@ for itr = 1:iterations
     %col = [output_col;grad_col];
 
     % fit in the first
-    xxi = min(row):1:max(row);
+    xxi = min(row):5:max(row);
     ys = csaps(row,col,p,xxi);
     
     for ll = 1:length(xxi)
         d1 = int16(ys(ll)-distance/2);
         d2 = int16(ys(ll)+distance/2);
         
-        output(xxi(ll),1:d1) = 0;
-        output(xxi(ll),d2:width) = 0;
+        th_img(xxi(ll),1:d1) = 0;
+        th_img(xxi(ll),d2:width) = 0;
         grad(xxi(ll),1:d1) = 0;
         grad(xxi(ll),d2:width) = 0;
     end
 end
-close(hw);
+
+
+if(0)
+figure;
+idx=151;
+subplot(idx);
+imshow(img_ori,[]);
+subplot(idx+1);
+imshow(grad_crop_2,[]);
+subplot(idx+2);
+imshow(th_im_crop,[]);
+subplot(idx+3);
+imshow(fusion,[]);
+hold on;
+plot(ys,xxi,'LineWidth',3);
+hold off;
+end
 
 %test_plot(smth,grad);
 
 curve = [xxi;ys]*2;
 if nargout >= 2
-    varargout{1} = output;
+    varargout{1} = fusion;
 end
 if nargout >= 3
     varargout{2} = grad;
 end
 if nargout >= 4
-    varargout{3} = smth;
+    varargout{3} = smth_crop;
 end
 
 end
@@ -201,12 +228,11 @@ end
 %Input:
 %   bin_img: thresholded binary image
 %   pos    : ginput get position
-function [curve,varargout] = update_curve(bin_img,pos)
+function [curve,varargout] = update_curve(bin_img,pos,p)
 pos = int16(cell2mat(pos)); % col,row
 [x,y] = size(bin_img);
- hw = waitbar(0,'Re-adjusting ...');
 %1. earse a block
-row = 100;
+row = 60;
 col = 100;
 if (pos(2)+row)>x
     row_u = x; % upper bounding of row
@@ -238,9 +264,8 @@ block_row = ( row_l : row_u );
 block_col = ( col_l : col_u );
 bin_img(block_row,block_col) = 0;
 bin_img(block_row, : ) = 0;
- waitbar(1/3);
 %2. add a new block
-row = 50;
+row = 30;
 col = 50;
 nblock_row = ( (pos(2)-row) : (pos(2)+row) );
 nblock_col = ( (pos(1)-col) : (pos(1)+col) );
@@ -249,16 +274,15 @@ bin_img(nblock_row,nblock_col) = 1;
 %3. fit again
 [row,col] = find(bin_img~=0);
 xxi = min(row):1:max(row);
-p=0.000000001;
+
 ys = csaps(row,col,p,xxi);
-waitbar(2/3);
  
 curve = [xxi;ys];
 if nargout == 2
     varargout{1} = bin_img;
 end
 
-close(hw);
+
 end
 
 %% Pre process
@@ -266,9 +290,8 @@ end
 % output: binary image
 % image:  pre_processed gray image ( Central ROI are extracted )
 function [output,image] = pre_process(img)
- hw = waitbar(0,'Thresholding ...');
-global_threshold = 50000;
-region_threshold = 0.1; % percentage
+global_threshold = 60000;
+region_threshold = 0.09; % percentage
 [~,width] = size(img);
 
 % 0. Gauss smoothing
@@ -277,7 +300,7 @@ img = imgaussfilt(img,10);
 
 % 1. global threshold
 threshold = global_threshold;
-img(img>threshold) = 0;
+img(img>threshold) = global_threshold;
 
 % 2. Image Open
 se = strel('square',5);
@@ -302,7 +325,6 @@ output = zeros([height,width]);
 row_step = 20;
 % loop outside
 for i=1:row_step:height
-    waitbar(i*row_step/height);
     % loop boundary
     if (i+row_step-1)>height
         row_step = height-i+1;
@@ -320,9 +342,9 @@ for i=1:row_step:height
     %output(i:i+row_step-1,:)=output(i:i+row_step-1,:) + row;
     output(i:i+row_step-1,:)=row;
 end
-close(hw);
 
 end
+
 
 %% Theshold by gray-value percent
 % calculate the range of gray-scale of the block
@@ -349,7 +371,8 @@ end
 %   region_threshold: percentage
 function new_block = threshold_histogram(block, region_threshold)
     [aa,bb] = size(block);
-    sz = aa*bb;
+    %sz = aa*bb;
+    sz = numel(block);
     sorted_block = sort(block(:));
     % Generate threshold
     thres_index = int32(sz*(1-region_threshold));
