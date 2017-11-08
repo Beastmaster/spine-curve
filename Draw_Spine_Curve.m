@@ -217,12 +217,12 @@ else
     else
         pos=[posx,posy]/2;
         if length(pos)>1
-            [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image/2,pos); 
+            [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
         end
     end
 end
 
-cla reset;
+%cla handles.axes1 reset;
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
 scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
 

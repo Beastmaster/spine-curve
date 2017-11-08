@@ -97,15 +97,15 @@ disp('done');
 
 %[curve,output] = GrayScaleBased('process',img);
 elseif strcmp('process',varargin{1})
-    [curve,output]= process(varargin{2});
+    [curve,fusion]= process(varargin{2});
     varargout{1} = curve;
-    varargout{2} = output;
+    varargout{2} = fusion;
 
 %[curve,output] = GrayScaleBased('update',bin_img,pos);
 elseif strcmp('update',varargin{1})
-    [curve,output] = update_curve(varargin{2},varargin(3),1e-9);
+    [curve,fusion] = update_curve(varargin{2},varargin(3),1e-9);
     varargout{1} = curve*2;
-    varargout{2} = output;
+    varargout{2} = fusion;
 end
 
 end
@@ -121,9 +121,9 @@ end
 function [curve,varargout]= process(img)
 % Parameters
 p=0.000000001;
-p=1e-9;
+p=1e-8;
 iterations = 3; % RANSAC iteration
-distance = 200; % ROI extent around the spine line
+distance = 100; % ROI extent around the spine line
 
 % Resize
 img_ori = imresize(img,0.5);
@@ -167,9 +167,10 @@ for itr = 1:iterations
     fusion = th_img+grad;
     
     [row,col] = find(fusion~=0);
-    disp(num2str(length(row)));
-    row = row(1:5:length(row));
-    col = col(1:5:length(col));
+    row = [row;row];
+    col = [col;col];
+    %row = row(1:5:length(row));
+    %col = col(1:5:length(col));
     % Way 2
     %[output_row,output_col] = find(output~=0);
     %[grad_row,grad_col] = find(grad~=0);
@@ -177,9 +178,9 @@ for itr = 1:iterations
     %col = [output_col;grad_col];
 
     % fit in the first
-    xxi = min(row):5:max(row);
+    xxi = min(row):1:max(row);
     ys = csaps(row,col,p,xxi);
-    
+   
     for ll = 1:length(xxi)
         d1 = int16(ys(ll)-distance/2);
         d2 = int16(ys(ll)+distance/2);
@@ -191,21 +192,13 @@ for itr = 1:iterations
     end
 end
 
-
+fusion = th_img+grad;
 if(0)
 figure;
-idx=151;
-subplot(idx);
-imshow(img_ori,[]);
-subplot(idx+1);
-imshow(grad_crop_2,[]);
-subplot(idx+2);
-imshow(th_im_crop,[]);
-subplot(idx+3);
-imshow(fusion,[]);
-hold on;
-plot(ys,xxi,'LineWidth',3);
+imshow(fusion,[]);hold on;
+scatter(ys,xxi);
 hold off;
+
 end
 
 %test_plot(smth,grad);
@@ -232,8 +225,8 @@ function [curve,varargout] = update_curve(bin_img,pos,p)
 pos = int16(cell2mat(pos)); % col,row
 [x,y] = size(bin_img);
 %1. earse a block
-row = 60;
-col = 100;
+row = 70;
+col = 300;
 if (pos(2)+row)>x
     row_u = x; % upper bounding of row
 else
@@ -258,23 +251,31 @@ if (pos(1)-col)<1
 else
     col_l = pos(1)-col; % lower bounding of colum
 end
-
-
 block_row = ( row_l : row_u );
 block_col = ( col_l : col_u );
 bin_img(block_row,block_col) = 0;
 bin_img(block_row, : ) = 0;
+
 %2. add a new block
-row = 30;
+row = 50;
 col = 50;
+block_sz = 50;
+
+nblock = uint16(strel('disk',block_sz,8).getnhood())*2;
+
 nblock_row = ( (pos(2)-row) : (pos(2)+row) );
 nblock_col = ( (pos(1)-col) : (pos(1)+col) );
-bin_img(nblock_row,nblock_col) = 1;
+
+row2 = uint16(pos(2)-block_sz);
+col2 = uint16(pos(1)-block_sz);
+bin_img(row2:row2+block_sz*2-2,col2:col2+block_sz*2-2) = nblock;
 
 %3. fit again
 [row,col] = find(bin_img~=0);
-xxi = min(row):1:max(row);
+[row2,col2] = find(bin_img==2);
+row=[row;row2;row2;row2];col=[col;col2;col2;col2];
 
+xxi = min(row):1:max(row);
 ys = csaps(row,col,p,xxi);
  
 curve = [xxi;ys];
@@ -282,6 +283,7 @@ if nargout == 2
     varargout{1} = bin_img;
 end
 
+%figure;imshow(bin_img,[]);
 
 end
 
@@ -291,7 +293,7 @@ end
 % image:  pre_processed gray image ( Central ROI are extracted )
 function [output,image] = pre_process(img)
 global_threshold = 60000;
-region_threshold = 0.09; % percentage
+region_threshold = 0.2; % percentage
 [~,width] = size(img);
 
 % 0. Gauss smoothing
@@ -319,7 +321,7 @@ img(:,width*3/4:width) = 0;
 image = img;
 
 % allocate memory first
-output = zeros([height,width]);
+output = uint16(zeros([height,width]));
 
 %%%% extract rows === Detrending
 row_step = 20;
@@ -334,10 +336,10 @@ for i=1:row_step:height
     row = img(i:i+row_step-1,:);
     
     % threshold 1
-    %row = threshold_gray_percent(row,region_threshold);
+    row = threshold_gray_percent(row,region_threshold);
     
     % threshold 2
-    row = threshold_histogram(row,region_threshold);
+    %row = threshold_histogram(row,region_threshold);
     
     %output(i:i+row_step-1,:)=output(i:i+row_step-1,:) + row;
     output(i:i+row_step-1,:)=row;
@@ -378,7 +380,7 @@ function new_block = threshold_histogram(block, region_threshold)
     thres_index = int32(sz*(1-region_threshold));
     thres = sorted_block(thres_index);
     % Threshold
-    new_block = (block>=thres);
+    new_block = uint16(block>=thres);
 end
 
 %% Strip head and pelvis
