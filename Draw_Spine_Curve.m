@@ -22,7 +22,7 @@ function varargout = Draw_Spine_Curve(varargin)
 
 % Edit the above text to modify the response to help Draw_Spine_Curve
 
-% Last Modified by GUIDE v2.5 06-Nov-2017 18:58:00
+% Last Modified by GUIDE v2.5 08-Nov-2017 13:40:53
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -64,6 +64,7 @@ handles.color1 = [1,0,0];
 handles.color2 = [1,1,0];
 handles.color3 = [0,0,1];
 handles.showPID = 1;
+handles.save_dir = '';
 
 if ~isfield(handles,'root_dir')
     handles.root_dir = 'D:\Project\spine_seg_spline\temp\test_dcm_531\*.dcm';
@@ -131,6 +132,14 @@ if filename == 0
     return;
 end
 
+set(handles.ang1_upper,'String','');
+set(handles.ang1_apex,'String','');
+set(handles.ang1_lower,'String','');
+set(handles.ang2_upper,'String','');
+set(handles.ang2_apex,'String','');
+set(handles.ang2_lower,'String','');
+
+
 handles.FileName = file;
 handles.Ori_Image = dicomread(file);
 %handles.Resize_Image = imresize(handles.Ori_Image,0.5);
@@ -165,6 +174,7 @@ vv = handles.Curve';
 [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
 
 % display
+cla(handles.axes1,'reset');
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
 scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
 line1 = cell2mat(line1); line2 = cell2mat(line2);
@@ -189,7 +199,6 @@ end
 ss = {nn;handles.Ori_Image;handles.Curve'};
 fn = strcat(nn,'.mat');
 fn = fullfile('D:\Project\spine-curve\statistics\manual_method',fn);
-disp(fn);
 %save(fn,'ang1','ang1_upper','ang1_lower','ang2','ang2_upper','ang2_lower');
 
 guidata(hObject, handles);
@@ -202,7 +211,7 @@ function adjust_Btn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
 
-if 0 %~isfield(handles,'Ori_Image')
+if ~isfield(handles,'Ori_Image')
     msgbox('Please load an image in the first !');
     return;
 end
@@ -272,17 +281,6 @@ function save_Opt_Callback(hObject, ~, handles)
 % hObject    handle to save_Opt (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.output = hObject;
-dirr = uigetdir();
-if dirr == 0
-    return;
-end
-filename = fullfile(dirr,'spine_curve.jpg');
-F = getframe(handles.axes1);
-Image = frame2im(F);
-imwrite(Image, filename);
-
-guidata(hObject, handles);
 
 
 
@@ -445,6 +443,122 @@ else
     set(handles.hid_id,'Label','Hide ID');
 end
 
+guidata(hObject, handles);
+
+
+
+
+
+function ang1_apex_Callback(hObject, eventdata, handles)
+% hObject    handle to ang1_apex (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ang1_apex as text
+%        str2double(get(hObject,'String')) returns contents of ang1_apex as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ang1_apex_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ang1_apex (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ang2_apex_Callback(hObject, eventdata, handles)
+% hObject    handle to ang2_apex (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ang2_apex as text
+%        str2double(get(hObject,'String')) returns contents of ang2_apex as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ang2_apex_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ang2_apex (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in save_btn.
+function save_btn_Callback(hObject, eventdata, handles)
+% hObject    handle to save_btn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+ang1 = handles.Angle(1);
+set(handles.cobb_Edit,'String',num2str(ang1));
+ang2 = handles.Angle(2);
+set(handles.cobb_Edit2,'String',num2str(ang2));
+
+ang1_upper = get(handles.ang1_upper,'String');
+ang1_apex = get(handles.ang1_apex,'String');
+ang1_lower = get(handles.ang1_lower,'String');
+ang2_upper = get(handles.ang2_upper,'String');
+ang2_apex = get(handles.ang2_apex,'String');
+ang2_lower = get(handles.ang2_lower,'String');
+
+try
+    fname = fullfile(handles.save_dir,[handles.pid,'.txt']);
+    fileID = fopen(fname,'w');
+    fprintf(fileID,'Patient ID: %s\n',handles.pid);
+    fprintf(fileID,'Leve1 Cobb angle\n');
+    fprintf(fileID,'Angle: %6.2f \nUpper: %6s \nApex: %6s\nLower: %6s', ...
+                            ang1,ang1_upper,ang1_apex,ang1_lower);
+    fprintf(fileID,'\n\nLeve2 Cobb angle\n');
+    fprintf(fileID,'Angle: %6.2f \nUpper: %6s\nApex: %6s\nLower: %6s', ...
+                            ang2,ang2_upper,ang2_apex,ang2_lower);
+catch;
+end
+
+try
+    fclose(fileID);
+catch;
+end
+
+guidata(hObject, handles);
+
+% --------------------------------------------------------------------
+function save_fig_Callback(hObject, eventdata, handles)
+% hObject    handle to save_fig (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+dirr = handles.save_dir;
+if dirr == 0
+    return;
+end
+filename = fullfile(dirr,[handles.pid,'.jpg']);
+F = getframe(handles.axes1);
+Image = frame2im(F);
+imwrite(Image, filename);
+
+guidata(hObject, handles);
+
+
+
+
+% --------------------------------------------------------------------
+function set_base_dir_Callback(hObject, eventdata, handles)
+% hObject    handle to set_base_dir (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+handles.save_dir = uigetdir();
 guidata(hObject, handles);
 
 
