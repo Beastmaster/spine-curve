@@ -68,7 +68,7 @@ for i=1:1:length(dicom_list)
     disp(info);
 
     % write result to txt file
-    [path,name,~] = fileparts(filename);
+    [~,name,~] = fileparts(filename);
     path = 'D:\QIN\image\lily\result';
     
     newname = strcat(path,'/',name,'.jpg');
@@ -121,9 +121,9 @@ end
 function [curve,varargout]= process(img)
 % Parameters
 p=0.000000001;
-p=1e-8;
+p=1e-9;
 iterations = 3; % RANSAC iteration
-distance = 100; % ROI extent around the spine line
+distance = 200; % ROI extent around the spine line
 
 % Resize
 img_ori = imresize(img,0.5);
@@ -220,71 +220,76 @@ end
 %% update curve by specifying a position
 %Input:
 %   bin_img: thresholded binary image
-%   pos    : ginput get position
+%   pos    : ginput get position (if pos<0, output original result)
 function [curve,varargout] = update_curve(bin_img,pos,p)
 pos = int16(cell2mat(pos)); % col,row
 [x,y] = size(bin_img);
-%1. earse a block
-row = 70;
-col = 300;
-if (pos(2)+row)>x
-    row_u = x; % upper bounding of row
+
+if (pos(1)<=0 || pos(2)<=0 ||pos(1)>y-10 || pos(2)>x-10)
+    [row,col] = find(bin_img~=0);
+    xxi = min(row):1:max(row);
+    ys = csaps(row,col,p,xxi);
+    curve = [xxi;ys];
+    if nargout == 2
+        varargout{1} = bin_img;
+    end
 else
-    row_u = pos(2)+row;
+    %1. earse a block
+    row = 50;
+    col = 300;
+    if (pos(2)+row)>x
+        row_u = x; % upper bounding of row
+    else
+        row_u = pos(2)+row;
+    end
+
+    if (pos(2)-row)<1
+        row_l = 1; % lower bounding of row
+    else
+        row_l = pos(2)-row; % lower bounding of row
+    end
+
+    if (pos(1)+col)>y
+        col_u = y; % upper bounding of colum
+    else
+        col_u = pos(1)+col; % upper bounding of colum
+    end
+
+
+    if (pos(1)-col)<1
+        col_l = 1; % lower bounding of colum
+    else
+        col_l = pos(1)-col; % lower bounding of colum
+    end
+    block_row = ( row_l : row_u );
+    block_col = ( col_l : col_u );
+    bin_img(block_row,block_col) = 0;
+    bin_img(block_row, : ) = 0;
+
+    %2. add a new block
+    row = 30;
+    col = 30;
+    block_sz = 45;
+
+    nblock_row = ( (pos(2)-row) : (pos(2)+row) );
+    nblock_col = ( (pos(1)-col) : (pos(1)+col) );
+    bin_img(nblock_row,nblock_col) = 2;
+
+
+    %3. fit again
+    [row,col] = find(bin_img~=0);
+    [row2,col2] = find(bin_img==2);
+    row=[row;row2;row2;row2];col=[col;col2;col2;col2];
+
+    xxi = min(row):1:max(row);
+    ys = csaps(row,col,p,xxi);
+
+
+    curve = [xxi;ys];
+    if nargout == 2
+        varargout{1} = bin_img;
+    end
 end
-
-if (pos(2)-row)<1
-    row_l = 1; % lower bounding of row
-else
-    row_l = pos(2)-row; % lower bounding of row
-end
-
-if (pos(1)+col)>y
-    col_u = y; % upper bounding of colum
-else
-    col_u = pos(1)+col; % upper bounding of colum
-end
-
-
-if (pos(1)-col)<1
-    col_l = 1; % lower bounding of colum
-else
-    col_l = pos(1)-col; % lower bounding of colum
-end
-block_row = ( row_l : row_u );
-block_col = ( col_l : col_u );
-bin_img(block_row,block_col) = 0;
-bin_img(block_row, : ) = 0;
-
-%2. add a new block
-row = 50;
-col = 50;
-block_sz = 50;
-
-nblock = uint16(strel('disk',block_sz,8).getnhood())*2;
-
-nblock_row = ( (pos(2)-row) : (pos(2)+row) );
-nblock_col = ( (pos(1)-col) : (pos(1)+col) );
-
-row2 = uint16(pos(2)-block_sz);
-col2 = uint16(pos(1)-block_sz);
-bin_img(row2:row2+block_sz*2-2,col2:col2+block_sz*2-2) = nblock;
-
-%3. fit again
-[row,col] = find(bin_img~=0);
-[row2,col2] = find(bin_img==2);
-row=[row;row2;row2;row2];col=[col;col2;col2;col2];
-
-xxi = min(row):1:max(row);
-ys = csaps(row,col,p,xxi);
- 
-curve = [xxi;ys];
-if nargout == 2
-    varargout{1} = bin_img;
-end
-
-%figure;imshow(bin_img,[]);
-
 end
 
 %% Pre process
@@ -293,7 +298,7 @@ end
 % image:  pre_processed gray image ( Central ROI are extracted )
 function [output,image] = pre_process(img)
 global_threshold = 60000;
-region_threshold = 0.2; % percentage
+region_threshold = 0.1; % percentage
 [~,width] = size(img);
 
 % 0. Gauss smoothing

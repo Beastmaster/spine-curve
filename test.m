@@ -1,5 +1,27 @@
 
 
+basedir = 'D:\Project\spine_seg_spline\temp\test_1106';
+dstdir = 'D:\Project\spine_seg_spline\temp\test_1106\xx';
+files = dir(fullfile(basedir,'*.jpg'));
+for i =1:length(files)
+    fname = files(i).name;
+    fullname = fullfile(basedir,fname);
+    
+    nfname = [num2str(randi(1e5)),'.jpg'];
+    nfname = fullfile(basedir,nfname);
+    movefile(fullname,nfname);
+    
+end
+
+
+return;
+
+
+
+
+
+
+
 I=uint16(smth_crop);
 level = graythresh(I);
 BW = im2bw(I,level);

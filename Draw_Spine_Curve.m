@@ -22,7 +22,7 @@ function varargout = Draw_Spine_Curve(varargin)
 
 % Edit the above text to modify the response to help Draw_Spine_Curve
 
-% Last Modified by GUIDE v2.5 08-Nov-2017 13:40:53
+% Last Modified by GUIDE v2.5 16-Nov-2017 17:34:16
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,6 +54,7 @@ function Draw_Spine_Curve_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for Draw_Spine_Curve
 handles.output = hObject;
+handles.ctrl_key = 0;
 
 %%%%% configs
 handles.scatter_size = 5;
@@ -148,7 +149,14 @@ imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on')
 handles.Adj = 1;
 
 info = dicominfo(file);
-handles.pid = info.PatientID;
+
+if(length(info.PatientID)<2)
+    [~,idx,~] = fileparts(handles.FileName);
+    handles.pid = idx;
+else
+    handles.pid = info.PatientID;
+end
+
 if handles.showPID == 0
     handles.pid(3:end)='*';
 end
@@ -158,10 +166,12 @@ set(handles.id_txt,'string',handles.pid);
 %------ fit
 if handles.Adj == 1
     [handles.Curve,handles.Bin_Image] = GrayScaleBased('process',handles.Ori_Image);
+    handles.last_Bin_Image = handles.Bin_Image;
     handles.Adj = 2;
 else
     pos = ginput(1);
     [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
+    handles.last_Bin_Image = handles.Bin_Image;
 end
 
 %---------
@@ -178,10 +188,10 @@ cla(handles.axes1,'reset');
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
 scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
 line1 = cell2mat(line1); line2 = cell2mat(line2);
-plot(line1(2,:),line1(1,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line1(4,:),line1(3,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(2,:),line2(1,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(4,:),line2(3,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
 
 ang1 = handles.Angle(1);
 set(handles.cobb_Edit,'String',num2str(ang1));
@@ -218,14 +228,15 @@ end
 
 if handles.Adj == 1
     [handles.Curve,handles.Bin_Image] = GrayScaleBased('process',handles.Ori_Image);
+    handles.last_Bin_Image = handles.Bin_Image;
     handles.Adj = 2;
 else
-    [posx,posy,but] = fginput(1,handles.axes1);
+    [posx,posy,but] = ginput(1);%,handles.axes1);
     if(but==27 || but==13)
-        ;
     else
         pos=[posx,posy]/2;
         if length(pos)>1
+            handles.last_Bin_Image = handles.Bin_Image;
             [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
         end
     end
@@ -238,10 +249,10 @@ scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.c
 vv = handles.Curve';
 [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
 line1 = cell2mat(line1); line2 = cell2mat(line2);
-plot(line1(2,:),line1(1,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line1(4,:),line1(3,:),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(2,:),line2(1,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(4,:),line2(3,:),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
 
 ang = num2str(handles.Angle(1));
 set(handles.cobb_Edit,'String',ang);
@@ -558,7 +569,127 @@ function set_base_dir_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
-handles.save_dir = uigetdir();
+tmp_dir = uigetdir();
+if(isdir(tmp_dir))
+handles.save_dir = tmp_dir;
+end
 guidata(hObject, handles);
 
 
+
+
+% --- Executes on key press with focus on figure1 or any of its controls.
+function figure1_WindowKeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+key = eventdata.Key;
+
+switch key
+    case 'control' % skip operation
+    case 'a'
+        if ~isfield(handles,'Ori_Image')
+            msgbox('Please load an image in the first !');
+            return;
+        end
+        if handles.Adj == 1
+            [handles.Curve,handles.Bin_Image] = GrayScaleBased('process',handles.Ori_Image);
+            handles.last_Bin_Image = handles.Bin_Image;
+            handles.Adj = 2;
+        else
+            [posx,posy,but] = ginput(1);%,handles.axes1);
+            if(but==27 || but==13)
+            else
+                pos=[posx,posy]/2;
+                if length(pos)>1
+                    handles.last_Bin_Image = handles.Bin_Image;
+                    [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
+                end
+            end
+        end
+        %cla handles.axes1 reset;
+        imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
+        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
+        vv = handles.Curve';
+        [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
+        line1 = cell2mat(line1); line2 = cell2mat(line2);
+        plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+
+        ang = num2str(handles.Angle(1));
+        set(handles.cobb_Edit,'String',ang);
+        ang = num2str(handles.Angle(2));
+        set(handles.cobb_Edit2,'String',ang);
+    
+    case 'z' % step back one step
+    if(handles.ctrl_key==1)
+        if ~isfield(handles,'Ori_Image')
+            msgbox('Please load an image in the first !');
+            return;
+        end
+        pos=[-1,-1];
+        handles.Bin_Image = handles.last_Bin_Image;
+        [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
+
+        %cla handles.axes1 reset;
+        imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
+        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
+
+        vv = handles.Curve';
+        [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
+        line1 = cell2mat(line1); line2 = cell2mat(line2);
+        plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+
+        ang = num2str(handles.Angle(1));
+        set(handles.cobb_Edit,'String',ang);
+        ang = num2str(handles.Angle(2));
+        set(handles.cobb_Edit2,'String',ang);
+    end
+    
+    otherwise
+
+end
+
+guidata(hObject, handles);
+
+
+% --- Executes on key press with focus on figure1 and none of its controls.
+function figure1_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+key = eventdata.Key;
+if(strcmp(key,'control'))
+    handles.ctrl_key = 1;
+end
+guidata(hObject, handles);
+
+
+
+% --- Executes on key release with focus on figure1 and none of its controls.
+function figure1_KeyReleaseFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+%	Key: name of the key that was released, in lower case
+%	Character: character interpretation of the key(s) that was released
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) released
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+key = eventdata.Key;
+if(strcmp(key,'control'))
+    handles.ctrl_key = 0;
+end
+guidata(hObject, handles);

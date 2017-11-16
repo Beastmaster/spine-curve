@@ -66,11 +66,10 @@ function varargout = correlation_map(varargin)
 template = cell2mat(varargin(1));
 image = cell2mat(varargin(2));
 
-% region size
-[~,temp_sz] = size(template);
-[~,img_sz] = size(image);
-scale = temp_sz/img_sz;
-%template = imresize(template,scale);
+% shrink size to reduce processing time
+scale = 0.05;
+template = imresize(template,scale);
+image = imresize(image,scale);
 
 gg = abs(normxcorr2(template,image));
 gT = gg == max ( gg ( : ) ) ;
@@ -79,8 +78,9 @@ idx = find(gT == 1);
 yoff = r-size(template,1);
 xoff = c-size(template,2);
 
-varargout(1) = {gg};
-varargout(2) = {[yoff xoff]};
+% remember to scale back
+varargout(1) = {imresize(gg,1/scale)};
+varargout(2) = {[yoff xoff]/scale};
 end
 
 

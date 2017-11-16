@@ -26,7 +26,7 @@ for i = 1:length(files)
        
        img = dicomread(filename);
        try
-           [curve,~] = GrayScaleBased('process',img); 
+           [curve, label] = GrayScaleBased('process',img); 
            [~,angle,line1,line2] = find_cobbs( curve' );
            [~,name,~] = fileparts(filename);
            str = strcat(name,' : ',num2str(angle)); 
@@ -35,23 +35,29 @@ for i = 1:length(files)
            fprintf(fid,'%s\n',str);
            
             % display
+            subplot(121)
             imshow(img,[]); hold on;
             scatter(curve(2,:),curve(1,:),5,'.'); hold on;
             line1 = cell2mat(line1); line2 = cell2mat(line2);
-            scatter(line1(2,:),line1(1,:),5,'filled--o'); hold on ;
-            scatter(line1(4,:),line1(3,:),5,'filled--o');hold on ;
-            scatter(line2(2,:),line2(1,:),5,'filled--o');hold on ;
-            scatter(line2(4,:),line2(3,:),5,'filled--o');hold on;
             
+            plot(line1(2,:),line1(1,:),'LineWidth',3);hold on;
+            plot(line1(4,:),line1(3,:),'LineWidth',3);hold on;
+            plot(line2(2,:),line2(1,:),'LineWidth',3);hold on;
+            plot(line2(4,:),line2(3,:),'LineWidth',3);hold on;
+
+
             str1 = strcat('cobb1=',num2str(angle(1)));
             str2 = strcat('cobb2=',num2str(angle(2)));
             text(0,60,str1,'Color','red','FontSize',14);
             text(0,180,str2,'Color','red','FontSize',14);
             
+            subplot(122);
+            imshow(label,[]);
+            
             % save image
             [~,name,~] = fileparts(filename);
             jpg_name = fullfile(dst_dir,strcat(name,'.jpg'));
-            F = getframe();
+            F = getframe(gcf);
             Image = frame2im(F);
             imwrite(Image, jpg_name);
             

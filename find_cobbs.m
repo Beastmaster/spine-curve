@@ -52,28 +52,34 @@ couple2 = line(locs(min_id:min_id+1),:);
 couple = [couple1;couple2];
 
 if nargout>3
-    xx = [-100,100];
+    len=200;
     
     tan_u = -1/tans(max_id);
     tan_d = -1/tans(max_id+1);
     
-    yyu = tan_u.*xx +couple1(1,2);
-    xxu = xx+couple1(1,1);
-    
-    yyd = tan_d.*xx +couple1(2,2);
-    xxd = xx+couple1(2,1);
-    varargout{1} = { xxu ;yyu ; xxd ;yyd };
-    
+    center1 = couple1(1,:);
+    center2 = couple1(2,:);
+    lv1_line_u = get_perpend(tan_u,len,center1);
+    lv1_line_d = get_perpend(tan_d,len,center2);
+    varargout{1} = { lv1_line_u;lv1_line_d };
+        
     tan_u = -1/tans(min_id);
     tan_d = -1/tans(min_id+1);
-    yyu = tan_u.*xx +couple2(1,2);
-    xxu = xx+couple2(1,1);
-    yyd = tan_d.*xx +couple2(2,2);
-    xxd = xx+couple2(2,1);    
-    varargout{2} = { xxu ;yyu ; xxd ;yyd };
+    
+    center1 = couple2(1,:);
+    center2 = couple2(2,:);
+    lv2_line_u = get_perpend(tan_u,len,center1);
+    lv2_line_d = get_perpend(tan_d,len,center2);
+    varargout{2} = { lv2_line_u; lv2_line_d };
 end
 
 end
 
+function output = get_perpend(tan,len,center)
+    sin_u = tan/sqrt(1+tan*tan);
+    cos_u = 1/sqrt(1+tan*tan);
 
-
+    yyu = [len*sin_u , -len*sin_u] + center(2);
+    xxu = [len*cos_u , -len*cos_u] + center(1);
+    output = [yyu;xxu];
+end
