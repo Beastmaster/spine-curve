@@ -22,17 +22,28 @@ Fit a spline based on gradient map and image intensity.
   Analysis of test result
 
 ## GUI Manual
-1. Load image:   
-click "Open Image", a dicom file will be selected and display. A spline will be generated automatically. Cobb angles will be measured.
+### 1. Load image:   
+Click "Open Image", a dicom file will be selected and display. A spline will be generated automatically. Cobb angles will be measured.
 
-2. Adjust spine line if not satisfied  
-** Method1: click "Adjust Curve";   
-** Method2: press keyboard "a";   
-a cross hair will track your mouse, press left mouse button to confirm the new position. The spline and Cobb angles will be updated.
+### 2. Adjust spine line if not satisfied  
+**Method1**: click "Adjust Curve";   
+**Method2**: press keyboard "a";   
+A cross hair will track your mouse, press left mouse button to confirm the new position. The spline and Cobb angles will be updated.  
+**Note**: If a cross hair appear and you exit adjustment status, just press "Esc" key.
 
-3. Save the result  
-Click "Save", a jpg picture will be saved to a specified location.
+### 4. Un-do manual adjustment  
+Press: *Ctrl+z*  
+**Note:** Only on step can be traced by now.   
+### 5. Menu Bar  
+- "Options"-> "Set Basdir"  
+Specify default folder when loading dicom files.  
+- "Options"-> "Hide ID"  
+Hide patient ID. Click it one more time to show ID.  
+- "Save Option" -> "Save Figure"  
+Shown figure will be saved to disk (default location is the same as application location, e.g., Desktop folder).  
+- "Save Option" -> "Set Base Dir"  
+Specify default figure save location.  
 
-
-
-
+### 6. Additional information
+You can fill in text editors ("Cobb1 info","Cobb2 info") to save additional information of spinal curve.  
+Click "Save" to save information includeing: *Cobb angle, Cobb info* to disk, as **".txt"** file, named by **"patient ID"**, to location **You sepcified in "Save Option"->"Set Base Dir"**. 
