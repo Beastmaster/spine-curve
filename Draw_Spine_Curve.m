@@ -22,7 +22,7 @@ function varargout = Draw_Spine_Curve(varargin)
 
 % Edit the above text to modify the response to help Draw_Spine_Curve
 
-% Last Modified by GUIDE v2.5 16-Nov-2017 17:34:16
+% Last Modified by GUIDE v2.5 19-Nov-2017 19:05:19
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -61,9 +61,7 @@ handles.scatter_size = 5;
 handles.scatter_type = 'b--o';
 handles.plot_type='LineWidth';
 handles.plot_size = 2.5;
-handles.color1 = [1,0,0];
-handles.color2 = [1,1,0];
-handles.color3 = [0,0,1];
+handles.color = [1,0,0;1,1,0;0,0,1];
 handles.showPID = 1;
 handles.save_dir = '';
 
@@ -181,22 +179,24 @@ if ~isfield(handles,'Curve')
 end
 
 vv = handles.Curve';
-[handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
+[handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
 
 % display
 cla(handles.axes1,'reset');
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
-line1 = cell2mat(line1); line2 = cell2mat(line2);
-plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
+for i= 1:4:size(pen_line,1)
+color_id = (i-1)/4+1;
+plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+end
 
 ang1 = handles.Angle(1);
-set(handles.cobb_Edit,'String',num2str(ang1));
+set(handles.cobb_Edit1,'String',num2str(ang1));
 ang2 = handles.Angle(2);
 set(handles.cobb_Edit2,'String',num2str(ang2));
+ang3 = handles.Angle(3);
+set(handles.cobb_Edit3,'String',num2str(ang3));
 
 if(0)
 ang1_upper = str2num(get(handles.ang1_upper,'String'));
@@ -244,18 +244,18 @@ end
 
 %cla handles.axes1 reset;
 imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
+scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
 
 vv = handles.Curve';
-[handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
-line1 = cell2mat(line1); line2 = cell2mat(line2);
-plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+[handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
+for i= 1:4:size(pen_line,1)
+color_id = (i-1)/4+1;
+plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+end
 
 ang = num2str(handles.Angle(1));
-set(handles.cobb_Edit,'String',ang);
+set(handles.cobb_Edit1,'String',ang);
 ang = num2str(handles.Angle(2));
 set(handles.cobb_Edit2,'String',ang);
 
@@ -263,18 +263,18 @@ guidata(hObject, handles);
 
 
 
-function cobb_Edit_Callback(~, ~, ~)
-% hObject    handle to cobb_Edit (see GCBO)
+function cobb_Edit1_Callback(~, ~, ~)
+% hObject    handle to cobb_Edit1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of cobb_Edit as text
-%        str2double(get(hObject,'String')) returns contents of cobb_Edit as a double
+% Hints: get(hObject,'String') returns contents of cobb_Edit1 as text
+%        str2double(get(hObject,'String')) returns contents of cobb_Edit1 as a double
 
 
 % --- Executes during object creation, after setting all properties.
-function cobb_Edit_CreateFcn(hObject, ~, ~)
-% hObject    handle to cobb_Edit (see GCBO)
+function cobb_Edit1_CreateFcn(hObject, ~, ~)
+% hObject    handle to cobb_Edit1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -511,10 +511,13 @@ function save_btn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
+
 ang1 = handles.Angle(1);
-set(handles.cobb_Edit,'String',num2str(ang1));
+set(handles.cobb_Edit1,'String',num2str(ang1));
 ang2 = handles.Angle(2);
 set(handles.cobb_Edit2,'String',num2str(ang2));
+ang3 = handles.Angle(3);
+set(handles.cobb_Edit3,'String',num2str(ang3));
 
 ang1_upper = get(handles.ang1_upper,'String');
 ang1_apex = get(handles.ang1_apex,'String');
@@ -613,17 +616,23 @@ switch key
         end
         %cla handles.axes1 reset;
         imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
+        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
         vv = handles.Curve';
-        [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
-        line1 = cell2mat(line1); line2 = cell2mat(line2);
-        plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+        [handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
+        ang1 = handles.Angle(1);
+        set(handles.cobb_Edit1,'String',num2str(ang1));
+        ang2 = handles.Angle(2);
+        set(handles.cobb_Edit2,'String',num2str(ang2));
+        ang3 = handles.Angle(3);
+        set(handles.cobb_Edit3,'String',num2str(ang3));
 
+        for i= 1:4:size(pen_line,1)
+            color_id = (i-1)/4+1;
+        plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+        end
         ang = num2str(handles.Angle(1));
-        set(handles.cobb_Edit,'String',ang);
+        set(handles.cobb_Edit1,'String',ang);
         ang = num2str(handles.Angle(2));
         set(handles.cobb_Edit2,'String',ang);
     
@@ -639,18 +648,26 @@ switch key
 
         %cla handles.axes1 reset;
         imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color3,'filled-o'); hold(handles.axes1,'on');
+        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
 
         vv = handles.Curve';
-        [handles.Couple,handles.Angle,line1,line2] = find_cobbs(vv);
-        line1 = cell2mat(line1); line2 = cell2mat(line2);
-        plot(line1(1,1:2),line1(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(line1(3,1:2),line1(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color1,'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(line2(1,1:2),line2(2,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(line2(3,1:2),line2(4,1:2),'LineWidth',handles.plot_size,'Color',handles.color2,'Parent',handles.axes1);hold(handles.axes1,'on');
+        [handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
+        ang1 = handles.Angle(1);
+        set(handles.cobb_Edit1,'String',num2str(ang1));
+        ang2 = handles.Angle(2);
+        set(handles.cobb_Edit2,'String',num2str(ang2));
+        ang3 = handles.Angle(3);
+        set(handles.cobb_Edit3,'String',num2str(ang3));
+        
+        for i= 1:4:size(pen_line,1)
+        color_id = (i-1)/4+1;
+        plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+        plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+        end
+
 
         ang = num2str(handles.Angle(1));
-        set(handles.cobb_Edit,'String',ang);
+        set(handles.cobb_Edit1,'String',ang);
         ang = num2str(handles.Angle(2));
         set(handles.cobb_Edit2,'String',ang);
     end
@@ -693,3 +710,26 @@ if(strcmp(key,'control'))
     handles.ctrl_key = 0;
 end
 guidata(hObject, handles);
+
+
+
+function cobb_Edit3_Callback(hObject, eventdata, handles)
+% hObject    handle to cobb_Edit3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of cobb_Edit3 as text
+%        str2double(get(hObject,'String')) returns contents of cobb_Edit3 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function cobb_Edit3_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to cobb_Edit3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

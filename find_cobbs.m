@@ -34,47 +34,44 @@ angl = atan(tans);
 
 % find 2 near points that has largest angle
 diffs = angl(2:end)-angl(1:end-1);
-[max_angle,max_id] = max(diffs);
-[min_angle, min_id] = min(diffs);
 
-% if angle<0: curve center locates on the left
-% if angle>0: curve center locates on the right
-max_angle = 360 * max_angle/(2*pi);
-min_angle = 360 * min_angle/(2*pi);
-if max_id<min_id
-    angle = [max_angle,min_angle];
-else
-    angle = [min_angle,max_angle];
+[~,cob_id] = sort(abs(diffs),'descend'); 
+if(length(cob_id)>3)
+cob_id=cob_id(1:3);
+end
+[~,s_cob_id] = sort(cob_id);
+cob_id = cob_id(s_cob_id);
+
+angle = 360*diffs(cob_id)/(2*pi);
+couple = [];
+for i = 1:length(angle) 
+    couple = [couple;line(locs(cob_id(i):cob_id(i)+1),:)];
 end
 
-couple1 = line(locs(max_id:max_id+1),:);
-couple2 = line(locs(min_id:min_id+1),:);
-couple = [couple1;couple2];
-
-if nargout>3
+if nargout>2
+    pen_lines = [];
     len=200;
     
-    tan_u = -1/tans(max_id);
-    tan_d = -1/tans(max_id+1);
-    
-    center1 = couple1(1,:);
-    center2 = couple1(2,:);
-    lv1_line_u = get_perpend(tan_u,len,center1);
-    lv1_line_d = get_perpend(tan_d,len,center2);
-    varargout{1} = { lv1_line_u;lv1_line_d };
-        
-    tan_u = -1/tans(min_id);
-    tan_d = -1/tans(min_id+1);
-    
-    center1 = couple2(1,:);
-    center2 = couple2(2,:);
-    lv2_line_u = get_perpend(tan_u,len,center1);
-    lv2_line_d = get_perpend(tan_d,len,center2);
-    varargout{2} = { lv2_line_u; lv2_line_d };
-end
+    for i = 1:size(cob_id)
+        center1 = couple(2*i-1,:);
+        center2 = couple(2*i,:);
 
-end
+        tan_u = -1/tans(cob_id(i));
+        tan_d = -1/tans(cob_id(i)+1);
 
+        lv1_line_u = get_perpend(tan_u,len,center1);
+        lv1_line_d = get_perpend(tan_d,len,center2);
+        pen_lines = [pen_lines;lv1_line_u;lv1_line_d];
+    end
+    varargout{1} = pen_lines;
+end % end if
+
+end % end function
+
+% return value:
+%  | y1 y2 |
+%  | x1 x2 |
+%
 function output = get_perpend(tan,len,center)
     sin_u = tan/sqrt(1+tan*tan);
     cos_u = 1/sqrt(1+tan*tan);
