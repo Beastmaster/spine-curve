@@ -8,6 +8,7 @@ list = importdata(original_list);
 save_path = 'F:\EOS_for_segmentation\test_patches';
 
 
+
 path = 'F:\EOS_for_segmentation\test_patches\result';
 prefix = '002';
 mid = '_res';

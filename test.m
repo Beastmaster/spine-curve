@@ -1,4 +1,84 @@
 
+imshow('pout.tif');
+h = imline(gca,[10 100], [100 100]);
+setColor(h,[0 1 0]);
+id = addNewPositionCallback(h,@(pos) title(mat2str(pos,3)));
+
+% After observing the callback behavior, remove the callback.
+% using the removeNewPositionCallback API function.
+%removeNewPositionCallback(h,id);
+return;
+
+
+fname = 'D:\Project\spine_seg_spline\temp\test_dcm_531/Z9549146.dcm';
+while(1)
+    ddir = 'D:\Project\spine_seg_spline\temp\test_dcm_531';
+    fname = uigetfile(fullfile(ddir,'*.dcm'));
+    img = dicomread(fullfile(ddir,fname));
+    
+    % Resize
+    img_ori = imresize(img,0.5);
+    [height,width] = size(img_ori);
+    
+    % clavicle
+    clavicle = load('resources/t1.mat');
+    template = imresize(clavicle.t1,0.5);
+    hh = 1/3;
+    block = img_ori(1:int16(height*hh),:);
+    [~,rc] = Matching_by_correlation(template,block);
+    pos_clavicle = rc ;%+ size(template); %,2);
+    
+    imshow(img_ori,[]); hold on;
+    scatter(pos_clavicle(2)+85,pos_clavicle(1)+150,100);
+    hold off;
+end
+
+return
+
+
+img = imread('F:\vertebra_patches\train_pos/M233338A_7.png');
+img = imresize(img,0.5);
+
+wavelength = 4;
+orientation = 60;
+[mag,phase] = imgaborfilt(img,wavelength,orientation);
+
+subplot(1,3,1);
+imshow(img);
+title('Original Image');
+subplot(1,3,2);
+imshow(mag,[])
+title('Gabor magnitude');
+subplot(1,3,3);
+imshow(phase,[]);
+title('Gabor phase');
+
+
+return
+BW = edge(img,'Canny');
+[H,T,R] = hough(BW);
+P  = houghpeaks(H,5,'threshold',ceil(0.3*max(H(:))));
+lines = houghlines(BW,T,R,P,'FillGap',5,'MinLength',7);
+figure, imshow(BW), hold on
+max_len = 0;
+for k = 1:length(lines)
+    xy = [lines(k).point1; lines(k).point2];
+    plot(xy(:,1),xy(:,2),'LineWidth',2,'Color','green');
+    
+    % Plot beginnings and ends of lines
+    plot(xy(1,1),xy(1,2),'x','LineWidth',2,'Color','yellow');
+    plot(xy(2,1),xy(2,2),'x','LineWidth',2,'Color','red');
+    
+    % Determine the endpoints of the longest line segment
+    len = norm(lines(k).point1 - lines(k).point2);
+    if ( len > max_len)
+        max_len = len;
+        xy_long = xy;
+    end
+end
+
+return;
+
 
 basedir = 'D:\Project\spine_seg_spline\temp\test_1106';
 dstdir = 'D:\Project\spine_seg_spline\temp\test_1106\xx';
@@ -63,7 +143,7 @@ imshow(BW,[]);
 subplot(122);
 imshow(im,[]);
 
-return 
+return
 im = imresize(im,0.5);
 
 [y,x]=size(im);
@@ -90,22 +170,22 @@ return;
 %% fitting test
 
 p=1e-3;
-    [row,col] = find(output~=0);
-    row = row(1:5:length(row));
-    col = col(1:5:length(col));
-    % Way 2
-    %[output_row,output_col] = find(output~=0);
-    %[grad_row,grad_col] = find(grad~=0);
-    %row = [output_row;grad_row];
-    %col = [output_col;grad_col];
+[row,col] = find(output~=0);
+row = row(1:5:length(row));
+col = col(1:5:length(col));
+% Way 2
+%[output_row,output_col] = find(output~=0);
+%[grad_row,grad_col] = find(grad~=0);
+%row = [output_row;grad_row];
+%col = [output_col;grad_col];
 
-    % fit in the first
-    xxi = min(row):0.5:max(row);
-    ys = csaps(row,col,p,xxi);
-    
-    figure;
-    imshow(output~=0,[]);hold on;
-    scatter(ys,xxi,5,'r');
+% fit in the first
+xxi = min(row):0.5:max(row);
+ys = csaps(row,col,p,xxi);
+
+figure;
+imshow(output~=0,[]);hold on;
+scatter(ys,xxi,5,'r');
 
 return;
 
@@ -116,7 +196,7 @@ path = 'D:\Project\spine_seg_spline\temp\test_dcm_531';
 fname = 'Y8478757';
 fname = fullfile(path,fname);
 if exist(fname, 'file')~=2
-  disp(fname);
+    disp(fname);
 end
 
 img = double(dicomread(fname));
@@ -183,15 +263,15 @@ img = img/350;
 
 block = Gx;
 region_threshold = 0.1;
-    [aa,bb] = size(block);
-    %sz = aa*bb;
-    sz = numel(block);
-    sorted_block = sort(block(:));
-    % Generate threshold
-    thres_index = int32(sz*(1-region_threshold));
-    thres = sorted_block(thres_index);
-    % Threshold
-    new_block = (block>=thres);
+[aa,bb] = size(block);
+%sz = aa*bb;
+sz = numel(block);
+sorted_block = sort(block(:));
+% Generate threshold
+thres_index = int32(sz*(1-region_threshold));
+thres = sorted_block(thres_index);
+% Threshold
+new_block = (block>=thres);
 Gxx = new_block;
 
 subplot(131);
@@ -238,13 +318,13 @@ for i=1:size(manual,1)
                 new{i,k} = test_data{j,k};
             end
             
-            for k=25+1:25+6 % copy manual 
-                new{i,k} = manual{i,k-25+1}; 
+            for k=25+1:25+6 % copy manual
+                new{i,k} = manual{i,k-25+1};
             end
             break;
         end
     end
-
+    
 end
 
 return;
@@ -258,7 +338,7 @@ for i=1:length(ddir)
     fname = fullfile(folder,d1.name);
     
     [~,id,~] = fileparts(fname);
- 
+    
     info = load(fname);
     info = {id,info.ang1,info.ang1_upper,info.ang1_lower,info.ang2, info.ang2_upper,info.ang2_lower};
     manual = [manual;info];

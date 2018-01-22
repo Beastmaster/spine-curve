@@ -129,12 +129,28 @@ distance = 200; % ROI extent around the spine line
 img_ori = imresize(img,0.5);
 [~,width] = size(img_ori);
 
+% strip head and pelvis
+rc = strip_head_pelvis(img_ori,'head');%pos = int16(pos/2);
+pos_head=rc(1)+100; pos_head_h = rc(2);
+pos_pelvis = strip_head_pelvis(img_ori,'pelvis');  %pos = int16(pos/2);
+pos_cl = strip_head_pelvis(img_ori,'clavicle');  %pos = int16(pos/2);
+pos_cr = strip_head_pelvis(img_ori,'clavicle_r');  %pos = int16(pos/2);
+if(abs(pos_cl(1)-pos_cr(1))>100)
+    pos_cl = [200,300];
+    pos_cr = [200,500];
+end
+img_ori(pos_pelvis-50:end,:)=0;
+img_ori(pos_cl(1):pos_cl(1)+200,1:pos_cl(2)+260) = 0;
+img_ori(pos_cr(1):pos_cr(1)+200,pos_cr(2)+50:end) = 0;
+img_ori(1:max(pos_cl(1),pos_cr(1))+20,:)=0;
+
+
 % Pre process
 % output is a image: threshold -> overlay line ROI
-[th_im smth]= pre_process(img_ori);
-% strip head and pelvis
-pos_head = strip_head_pelvis(img_ori,'head')+100;  %pos = int16(pos/2);
-pos_pelvis = strip_head_pelvis(img_ori,'pelvis');  %pos = int16(pos/2);
+[th_im,smth]= pre_process(img_ori);
+
+
+
 
 % Generate gradient map
 grad_ori = abs(gradient(smth));
@@ -143,28 +159,27 @@ grad_crop_1(:,1:width*1/4) = 0;
 grad_crop_1(:,width*3/4:width) = 0;
 grad_crop_1_th=grad_crop_1;
 grad_crop_1_th(grad_crop_1_th<0) = 0;
-
 grad_th = threshold_histogram(grad_crop_1_th,0.01);
 
-% crop
-smth_crop=smth;
-smth_crop(1:pos_head,:)=0;
-smth_crop(pos_pelvis:end,:)=0;
+if(0)
+figure
+subplot(131)
+imshow(img_ori,[]);hold on;
+scatter(pos_cr(2),pos_cr(1),30);hold on;
+scatter(pos_cl(2),pos_cl(1),30);hold off;
+subplot(132)
+imshow(grad_th,[]);
+subplot(133)
+imshow(th_im,[]);
+end
 
-grad_crop_2=grad_th;
-grad_crop_2(1:pos_head,:)=0;
-grad_crop_2(pos_pelvis:end,:)=0;
-
-th_im_crop=th_im;
-th_im_crop(1:pos_head,:)=0;
-th_im_crop(pos_pelvis:end,:)=0;
 
 % curve fitting with RANSAC
-grad = grad_crop_2;
-th_img = th_im_crop;
+grad = grad_th;
+th_img = th_im;
 for itr = 1:iterations
     % Way 1
-    fusion = th_img+grad;
+    fusion = th_img ;%+grad;
     
     [row,col] = find(fusion~=0);
     row = [row;row];
@@ -297,6 +312,7 @@ end
 % output: binary image
 % image:  pre_processed gray image ( Central ROI are extracted )
 function [output,image] = pre_process(img)
+
 global_threshold = 60000;
 region_threshold = 0.1; % percentage
 [~,width] = size(img);
@@ -344,7 +360,7 @@ for i=1:row_step:height
     row = threshold_gray_percent(row,region_threshold);
     
     % threshold 2
-    %row = threshold_histogram(row,region_threshold);
+    %row = threshold_histogram(row,0.05);
     
     %output(i:i+row_step-1,:)=output(i:i+row_step-1,:) + row;
     output(i:i+row_step-1,:)=row;
@@ -366,8 +382,14 @@ function new_block = threshold_gray_percent(block,region_threshold)
     mi = min(min(block(:,:)));
     ran = ma-mi;
     % threshold
-    thres = ma-(ran * region_threshold);
-    new_block = (block>thres);
+    thres1 = ma-(ran * region_threshold);
+    sz = numel(block);
+    sorted_block = sort(block(:));
+    % Generate threshold
+    thres_index = int32(sz*(1-region_threshold/2));
+    thres2 = sorted_block(thres_index);
+    
+    new_block = (block>max(thres1,thres2));
 end
 
 %% Theshold by histogram
@@ -410,8 +432,8 @@ if strcmp(option,'head')
     template = imresize(head.region,0.5);
     hh = 1/5;
     block = imm(1:int16(height*hh),:);
-    [~,rc] = Matching_by_correlation(template,block,'head');
-    position = rc(1)+ size(template,1);
+    [~,rc] = Matching_by_correlation(template,block);
+    position = rc+ size(template,1);
     return;
     
     region_threshold = 0.1;
@@ -440,7 +462,7 @@ elseif strcmp(option,'pelvis')
     template =imresize( pelvis.region ,0.5);
     hh = 1/3;
     block = imm(int16(height*hh):height,:);
-    [~,rc] = Matching_by_correlation(template,block,'pelvis');
+    [~,rc] = Matching_by_correlation(template,block);
     position = rc(1) + int16(height*hh)+100;
     return;
     
@@ -459,6 +481,27 @@ elseif strcmp(option,'pelvis')
     position = mean(block_x);
     position = int16(height*hh)+position;
     
+%% clavicle
+elseif strcmp(option,'clavicle')
+    %t1 = load('resources/t1.mat');
+    %template = imresize(t1.t1,0.5);
+    clav = load('resources/clavicle.mat');
+    template = imresize(clav.clavicle,0.5);
+    hh = 1/3;
+    block = imm(1:int16(height*hh),:);
+    [~,rc] = Matching_by_correlation(template,block);
+    position = rc; %,2);
+    return;
+
+%% clavicle right
+elseif strcmp(option,'clavicle_r')
+    clav = load('resources/clavicle_r.mat');
+    template = imresize(clav.clavicle_r,0.5);
+    hh = 1/3;
+    block = imm(1:int16(height*hh),:);
+    [~,rc] = Matching_by_correlation(template,block);
+    position = rc; %,2);
+    return;   
 %% option error
 else
     disp('Options error: input head or pelvis');

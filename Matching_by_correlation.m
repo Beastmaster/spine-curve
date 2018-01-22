@@ -20,15 +20,7 @@
 %Output:
 % map: correlation map
 % rc : position
-function [map,rc ]= Matching_by_correlation(temp,img,varargin)
-if nargin<1
-    extract_template();
-    return;
-elseif nargin<2
-    extract_template(temp);
-    return;
-end
-
+function [map,rc ]= Matching_by_correlation(temp,img)
 % load a templete
 template = temp;
 %template = pre_process(template);
@@ -38,19 +30,9 @@ ff = img;
 ff = pre_process(ff);
 
 % restrict area
-[img_sz,~] = size(ff);
 ff_s = ff;
-if strcmp('head',varargin(1))
-    % search only upper section of image
-    %ff_s(int16(img_sz(1)*1/3):end,:) = 0;
-elseif strcmp('pelvis',varargin(1))
-    % search only bottom section of image
-    %ff_s(1:int16(img_sz(1)*2/3),:) = 0;
-end
 
 [map, rc] = correlation_map(template,ff_s);
-
-
 end
 
 %% Compute correlation map

@@ -7,74 +7,81 @@
 %% process a bundle of files
 % Input: files is a cell list of full-filenames
 % output file: dicom filename and cobb angle
-function bundle_process(list)
+function bundle_process(files,dst_dir)
 %%%%% Required parameters %%%%
-dst_dir = 'D:\Project\spine_seg_spline\temp\test_1106';
-files = importdata(list);
+%dst_dir = 'D:\Project\spine_seg_spline\temp\test_1106';
+%files = importdata(list);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-bImShow=0;
 output = [];
 fail = [];
-log = fullfile(dst_dir,'output.txt');
+log = fullfile(dst_dir,'output.csv');
 fid = fopen(log,'w');
+
+color = [1,0,0;1,1,0;0,0,1];
+plot_size = 2;
+add_fig = figure();
 for i = 1:length(files)
-   filename = char(files(i));
-   %if strfind(filename,'face')
-       %if strfind(filename,'SC')
-       % continue
-       %end
-       
-       img = dicomread(filename);
-       try
-           [curve, label] = GrayScaleBased('process',img); 
-           [~,angle,line1,line2] = find_cobbs( curve' );
-           [~,name,~] = fileparts(filename);
-           str = strcat(name,' : ',num2str(angle)); 
-           output = [output;cellstr(str)];
-           disp(str);
-           fprintf(fid,'%s\n',str);
-           
-            % display
-            subplot(121)
-            imshow(img,[]); hold on;
-            scatter(curve(2,:),curve(1,:),5,'.'); hold on;
-            line1 = cell2mat(line1); line2 = cell2mat(line2);
-            
-            plot(line1(2,:),line1(1,:),'LineWidth',3);hold on;
-            plot(line1(4,:),line1(3,:),'LineWidth',3);hold on;
-            plot(line2(2,:),line2(1,:),'LineWidth',3);hold on;
-            plot(line2(4,:),line2(3,:),'LineWidth',3);hold on;
-
-
-            str1 = strcat('cobb1=',num2str(angle(1)));
-            str2 = strcat('cobb2=',num2str(angle(2)));
-            text(0,60,str1,'Color','red','FontSize',14);
-            text(0,180,str2,'Color','red','FontSize',14);
-            
-            subplot(122);
-            imshow(label,[]);
-            
-            % save image
-            [~,name,~] = fileparts(filename);
-            jpg_name = fullfile(dst_dir,strcat(name,'.jpg'));
-            F = getframe(gcf);
-            Image = frame2im(F);
-            imwrite(Image, jpg_name);
-            
-            
-       catch
-           fail = [fail;cellstr(filename)];
-       end
-       
-       
-       
-   %end
-end
-
+    filename = char(files(i));
+    [~,pname,~] = fileparts(filename);
+    fprintf(fid,'%s,',pname);
+    try
+        Ori_Image = dicomread(filename);
+        
+        %------ fit
+        [Curve,~]= GrayScaleBased('process',Ori_Image);
+        
+        vv = Curve';
+        [~,Angle,pen_line] = find_cobbs(vv);
+        
+        % display
+        try
+            cla(add_fig);
+        catch
+            break;
+        end
+        figure(add_fig);
+        imshow(Ori_Image,[]); hold on;
+        %scatter(Curve(2,:),Curve(1,:),3,'b','filled-o'); hold on;
+        for ii= 1:4:size(pen_line,1)
+            color_id = (ii-1)/4+1;
+            plot(pen_line(ii,:),pen_line(ii+1,:),'LineWidth', plot_size,'Color',color(color_id,:));hold on;
+            plot(pen_line(ii+2,:),pen_line(ii+3,:),'LineWidth', plot_size,'Color',color(color_id,:));hold on;
+        end
+        
+        try
+            for ii=1:3
+                if Angle(ii)>0
+                    direct = 'right';
+                else
+                    direct = 'left ';
+                end
+                str = sprintf('%d: %6s : %3f',ii,direct,abs(Angle(ii)));
+                text(0,ii*120-60,str,'Color','red','FontSize',14);
+                
+                % write to log file
+                fprintf(fid,'%6s, %3f,',direct,abs(Angle(ii)));
+            end
+        catch
+            % no ops
+        end
+        fprintf(fid,'\n');
+        F = getframe(add_fig); %gcf
+        Image = frame2im(F);
+        imwrite(Image, fullfile(dst_dir,strcat(pname,'.png')));
+    catch
+        fprintf(fid,'failed\n');
+        disp(filename);
+    end
+end % end for
 fclose(fid);
-fclose all;
 
+try
+    close(add_fig);
+catch
+    % no ops
 end
+
+end % end functions
 
 % get patient ID from filename
 function id = id_from_fname(filename)

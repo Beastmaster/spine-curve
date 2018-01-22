@@ -22,16 +22,16 @@ function varargout = Draw_Spine_Curve(varargin)
 
 % Edit the above text to modify the response to help Draw_Spine_Curve
 
-% Last Modified by GUIDE v2.5 19-Nov-2017 19:05:19
+% Last Modified by GUIDE v2.5 19-Jan-2018 10:55:02
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @Draw_Spine_Curve_OpeningFcn, ...
-                   'gui_OutputFcn',  @Draw_Spine_Curve_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
+    'gui_Singleton',  gui_Singleton, ...
+    'gui_OpeningFcn', @Draw_Spine_Curve_OpeningFcn, ...
+    'gui_OutputFcn',  @Draw_Spine_Curve_OutputFcn, ...
+    'gui_LayoutFcn',  [] , ...
+    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
     gui_State.gui_Callback = str2func(varargin{1});
 end
@@ -61,38 +61,21 @@ handles.scatter_size = 5;
 handles.scatter_type = 'b--o';
 handles.plot_type='LineWidth';
 handles.plot_size = 2.5;
-handles.color = [1,0,0;1,1,0;0,0,1];
+handles.color = [1,0,0;0,0,1;0,1,0];
 handles.showPID = 1;
 handles.save_dir = '';
 
 if ~isfield(handles,'root_dir')
     handles.root_dir = 'D:\Project\spine_seg_spline\temp\test_dcm_531\*.dcm';
-%'C:\Users\qinsh\OneDrive\Project\Graduation2017\journal\test_images/*.dcm');
+    %'C:\Users\qinsh\OneDrive\Project\Graduation2017\journal\test_images/*.dcm');
 end
 
 %%%% open dicom image
-open_icon = imread('resources/load.PNG');
-open_icon(open_icon>250) = 245;
-sz = get(handles.open_Btn,'Extent');
-aa = sz(4)*2.8;%+35;
-bb = sz(3)*2.8;%+80;
-open_icon = imresize(open_icon,[aa,bb] );
-%set(handles.open_Btn,'String',' ');
-%set(handles.open_Btn,'CData',open_icon);
-
-dd = pwd;
-name = fullfile(dd,'resources/load.PNG');
-name = strrep(name,'\','/');
-%labelTop=['<HTML><center><h2>Load EOS </h2> <img src ="file:' name '" align="bottom"></HTML>'];
-%labelBot=['<div style="font-family:impact;color:green"><i>What a</i>'...
-%          ' <Font color="blue" face="Comic Sans MS">nice day!'];
 labelTop=['<HTML><center><h3>Load EOS</h3> </HTML>'];
 set(handles.open_Btn, 'string',labelTop );
 
 
 %%%% adjust new curve
-name = fullfile(dd,'resources/adj.PNG');
-name = strrep(name,'\','/');
 labelTop=['<HTML> <table frame="border"><tr><center><h3> ADJUST </h3> <tr></table></HTML>'];
 set(handles.adjust_Btn, 'string',labelTop );
 
@@ -108,7 +91,7 @@ guidata(hObject, handles);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = Draw_Spine_Curve_OutputFcn(hObject, eventdata, handles) 
+function varargout = Draw_Spine_Curve_OutputFcn(hObject, eventdata, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -168,7 +151,7 @@ if handles.Adj == 1
     handles.Adj = 2;
 else
     pos = ginput(1);
-    [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
+    [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos);
     handles.last_Bin_Image = handles.Bin_Image;
 end
 
@@ -177,41 +160,67 @@ if ~isfield(handles,'Curve')
     msgbox('No spine line generated !');
     return;
 end
+% clear display in the first
+cla(handles.axes1,'reset');
+% show image and curve
+update_curve_disp(handles);
+guidata(hObject, handles);
+
+
+
+% -- sub function to update curve
+function update_curve_disp(handles)
+%cla handles.axes1 reset;
+imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
+%scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
 
 vv = handles.Curve';
 [handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
+update_cobb_text(handles);
 
-% display
-cla(handles.axes1,'reset');
-imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
-for i= 1:4:size(pen_line,1)
-color_id = (i-1)/4+1;
-plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+%%% reserved for other visual model
+% for i= 1:4:size(pen_line,1)
+%     color_id = (i-1)/4+1;
+%     plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+%     plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+% end
+handles.lls = cell(numel(handles.Angle)*2,1);
+for i= 1:numel(handles.Angle)
+    handles.lls{2*i-1} = imline(handles.axes1,pen_line(4*i-3,:),pen_line(4*i-2,:));
+    setColor(handles.lls{2*i-1},handles.color(i,:));
+    handles.lls{2*i} = imline(handles.axes1,pen_line(4*i-1,:)-30,pen_line(4*i,:)-30);
+    setColor(handles.lls{2*i},handles.color(i,:));
+end
+for i = 1:numel(handles.lls)
+    addNewPositionCallback(handles.lls{i},@(pos) line_segments(handles));
 end
 
-ang1 = handles.Angle(1);
-set(handles.cobb_Edit1,'String',num2str(ang1));
-ang2 = handles.Angle(2);
-set(handles.cobb_Edit2,'String',num2str(ang2));
-ang3 = handles.Angle(3);
-set(handles.cobb_Edit3,'String',num2str(ang3));
+%-- callback function: moving line segments
+function line_segments(handles)
+angles = zeros(numel(handles.lls),1);
+for i=1:numel(handles.lls)
+    pos =  handles.lls{i}.getPosition();
+    pos = pos(2,:)-pos(1,:);
+    angles(i) = atan(pos(2)/pos(1));
+end
+for i=1:numel(angles)/2
+    handles.Angle(i) = rad2deg(angles(2*i-1) - angles(2*i));
+end
+update_cobb_text(handles);
 
-if(0)
-ang1_upper = str2num(get(handles.ang1_upper,'String'));
-ang1_lower = str2num(get(handles.ang1_lower,'String'));
-ang2_upper = str2num(get(handles.ang2_upper,'String'));
-ang2_lower = str2num(get(handles.ang2_lower,'String'));
+
+% -- sub function: update Cobb angle txt edit
+function update_cobb_text(handles)
+% update text edit (Cobb angle)
+for i=1:3
+    set(eval(strcat('handles.cobb_Edit',num2str(i))),'String',' ');
+end
+for i=1:numel(handles.Angle)
+    ang = num2str(handles.Angle(i));
+    set(eval(strcat('handles.cobb_Edit',num2str(i))),'String',ang);
 end
 
-[~,nn,~] = fileparts(handles.FileName);
-ss = {nn;handles.Ori_Image;handles.Curve'};
-fn = strcat(nn,'.mat');
-fn = fullfile('D:\Project\spine-curve\statistics\manual_method',fn);
-%save(fn,'ang1','ang1_upper','ang1_lower','ang2','ang2_upper','ang2_lower');
 
-guidata(hObject, handles);
 
 
 % --- Executes on button press in adjust_Btn.
@@ -237,30 +246,12 @@ else
         pos=[posx,posy]/2;
         if length(pos)>1
             handles.last_Bin_Image = handles.Bin_Image;
-            [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
+            [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos);
         end
     end
 end
-
-%cla handles.axes1 reset;
-imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
-
-vv = handles.Curve';
-[handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
-for i= 1:4:size(pen_line,1)
-color_id = (i-1)/4+1;
-plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
-plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
-end
-
-ang = num2str(handles.Angle(1));
-set(handles.cobb_Edit1,'String',ang);
-ang = num2str(handles.Angle(2));
-set(handles.cobb_Edit2,'String',ang);
-
+update_curve_disp(handles);
 guidata(hObject, handles);
-
 
 
 function cobb_Edit1_Callback(~, ~, ~)
@@ -427,12 +418,15 @@ function Options_Callback(hObject, eventdata, handles)
 
 
 % --------------------------------------------------------------------
-function base_dir_Callback(hObject, eventdata, handles)
-% hObject    handle to base_dir (see GCBO)
+function set_dcm_base_dir_Callback(hObject, eventdata, handles)
+% hObject    handle to set_dcm_base_dir (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
 tmp_dir = uigetdir();
+if(tmp_dir==0)
+    return;
+end
 if(isdir(tmp_dir))
     handles.root_dir = fullfile(tmp_dir,'*.dcm');
 end
@@ -452,7 +446,7 @@ if handles.showPID==1
 else
     handles.showPID=1;
     set(handles.hid_id,'Label','Hide ID');
-end
+end %end if
 
 guidata(hObject, handles);
 
@@ -512,43 +506,41 @@ function save_btn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
 
-ang1 = handles.Angle(1);
-set(handles.cobb_Edit1,'String',num2str(ang1));
-ang2 = handles.Angle(2);
-set(handles.cobb_Edit2,'String',num2str(ang2));
-ang3 = handles.Angle(3);
-set(handles.cobb_Edit3,'String',num2str(ang3));
-
-ang1_upper = get(handles.ang1_upper,'String');
-ang1_apex = get(handles.ang1_apex,'String');
-ang1_lower = get(handles.ang1_lower,'String');
-ang2_upper = get(handles.ang2_upper,'String');
-ang2_apex = get(handles.ang2_apex,'String');
-ang2_lower = get(handles.ang2_lower,'String');
-
 try
     fname = fullfile(handles.save_dir,[handles.pid,'.txt']);
     fileID = fopen(fname,'w');
-    fprintf(fileID,'Patient ID: %s\n',handles.pid);
-    fprintf(fileID,'Leve1 Cobb angle\n');
-    fprintf(fileID,'Angle: %6.2f \nUpper: %6s \nApex: %6s\nLower: %6s', ...
-                            ang1,ang1_upper,ang1_apex,ang1_lower);
-    fprintf(fileID,'\n\nLeve2 Cobb angle\n');
-    fprintf(fileID,'Angle: %6.2f \nUpper: %6s\nApex: %6s\nLower: %6s', ...
-                            ang2,ang2_upper,ang2_apex,ang2_lower);
-catch;
+    for ii=1:3
+        Angle = str2double(get(eval(strcat('handles.cobb_Edit',num2str(ii))),'String'));
+        if isnan(Angle)
+            continue;
+        end
+        if Angle>0
+            direct = 'R';
+        else
+            direct = 'L ';
+        end
+        str = sprintf('%d: %6s : %3f',ii,direct,abs(Angle));
+        text(0,ii*120-60,str,'Color','red','FontSize',14);
+        
+        % write to log file
+        fprintf(fileID,'%6s, %3f,',direct,abs(Angle));
+    end
+    save_single_fig_Callback(hObject, eventdata, handles)
+catch
+    % no ops
 end
 
 try
     fclose(fileID);
-catch;
-end
+catch
+    % no op
+end % end try
 
 guidata(hObject, handles);
 
 % --------------------------------------------------------------------
-function save_fig_Callback(hObject, eventdata, handles)
-% hObject    handle to save_fig (see GCBO)
+function save_single_fig_Callback(hObject, eventdata, handles)
+% hObject    handle to save_single_fig (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
@@ -567,14 +559,14 @@ guidata(hObject, handles);
 
 
 % --------------------------------------------------------------------
-function set_base_dir_Callback(hObject, eventdata, handles)
-% hObject    handle to set_base_dir (see GCBO)
+function set_single_save_dir_Callback(hObject, eventdata, handles)
+% hObject    handle to set_single_save_dir (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles.output = hObject;
 tmp_dir = uigetdir();
 if(isdir(tmp_dir))
-handles.save_dir = tmp_dir;
+    handles.save_dir = tmp_dir;
 end
 guidata(hObject, handles);
 
@@ -595,86 +587,33 @@ key = eventdata.Key;
 switch key
     case 'control' % skip operation
     case 'a'
-        if ~isfield(handles,'Ori_Image')
-            msgbox('Please load an image in the first !');
-            return;
-        end
-        if handles.Adj == 1
-            [handles.Curve,handles.Bin_Image] = GrayScaleBased('process',handles.Ori_Image);
-            handles.last_Bin_Image = handles.Bin_Image;
-            handles.Adj = 2;
-        else
-            [posx,posy,but] = ginput(1);%,handles.axes1);
-            if(but==27 || but==13)
-            else
-                pos=[posx,posy]/2;
-                if length(pos)>1
-                    handles.last_Bin_Image = handles.Bin_Image;
-                    [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
-                end
-            end
-        end
-        %cla handles.axes1 reset;
-        imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
-        vv = handles.Curve';
-        [handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
-        ang1 = handles.Angle(1);
-        set(handles.cobb_Edit1,'String',num2str(ang1));
-        ang2 = handles.Angle(2);
-        set(handles.cobb_Edit2,'String',num2str(ang2));
-        ang3 = handles.Angle(3);
-        set(handles.cobb_Edit3,'String',num2str(ang3));
-
-        for i= 1:4:size(pen_line,1)
-            color_id = (i-1)/4+1;
-        plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
-        end
-        ang = num2str(handles.Angle(1));
-        set(handles.cobb_Edit1,'String',ang);
-        ang = num2str(handles.Angle(2));
-        set(handles.cobb_Edit2,'String',ang);
-    
-    case 'z' % step back one step
-    if(handles.ctrl_key==1)
-        if ~isfield(handles,'Ori_Image')
-            msgbox('Please load an image in the first !');
-            return;
-        end
-        pos=[-1,-1];
-        handles.Bin_Image = handles.last_Bin_Image;
-        [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos); 
-
-        %cla handles.axes1 reset;
-        imshow(handles.Resize_Image,[],'Parent',handles.axes1); hold(handles.axes1,'on');
-        scatter(handles.Curve(2,:),handles.Curve(1,:),'Parent',handles.axes1,3,handles.color(3,:),'filled-o'); hold(handles.axes1,'on');
-
-        vv = handles.Curve';
-        [handles.Couple,handles.Angle,pen_line] = find_cobbs(vv);
-        ang1 = handles.Angle(1);
-        set(handles.cobb_Edit1,'String',num2str(ang1));
-        ang2 = handles.Angle(2);
-        set(handles.cobb_Edit2,'String',num2str(ang2));
-        ang3 = handles.Angle(3);
-        set(handles.cobb_Edit3,'String',num2str(ang3));
+        adjust_Btn_Callback(hObject, eventdata, handles);
         
-        for i= 1:4:size(pen_line,1)
-        color_id = (i-1)/4+1;
-        plot(pen_line(i,:),pen_line(i+1,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
-        plot(pen_line(i+2,:),pen_line(i+3,:),'LineWidth',handles.plot_size,'Color',handles.color(color_id,:),'Parent',handles.axes1);hold(handles.axes1,'on');
+    case 'z' % step back one step
+        if(handles.ctrl_key==1)
+            if ~isfield(handles,'Ori_Image')
+                msgbox('Please load an image in the first !');
+                return;
+            end
+            pos=[-1,-1];
+            handles.Bin_Image = handles.last_Bin_Image;
+            [handles.Curve,handles.Bin_Image] = GrayScaleBased('update',handles.Bin_Image,pos);
+            update_curve_disp(hObject, eventdata, handles);
+        end % end if
+        
+    case 's'
+        dirr = handles.save_dir;
+        if dirr == 0
+            return;
         end
-
-
-        ang = num2str(handles.Angle(1));
-        set(handles.cobb_Edit1,'String',ang);
-        ang = num2str(handles.Angle(2));
-        set(handles.cobb_Edit2,'String',ang);
-    end
-    
+        filename = fullfile(dirr,[handles.pid,'.jpg']);
+        F = getframe(handles.axes1);
+        Image = frame2im(F);
+        imwrite(Image, filename);
+        save_btn_Callback(hObject, eventdata, handles);
     otherwise
-
-end
+        % no op
+end % end switch key
 
 guidata(hObject, handles);
 
@@ -712,7 +651,7 @@ end
 guidata(hObject, handles);
 
 
-
+%-----------------------------------------------------------
 function cobb_Edit3_Callback(hObject, eventdata, handles)
 % hObject    handle to cobb_Edit3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -733,3 +672,28 @@ function cobb_Edit3_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+ 
+% --------------------------------------------------------------------
+function set_batch_res_save_dir_Callback(hObject, ~, handles)
+% hObject    handle to set_batch_res_save_dir (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.output = hObject;
+uiwait(msgbox('Please select a folder to store results !','modal'));
+dst_dir = uigetdir('Dir Selector');
+if(dst_dir == 0)
+    msgbox('invalid dir!');
+    return
+end
+dcms = dir(handles.root_dir);
+list = {};
+for i = 1:length(dcms)
+    [base_dir,~,~] = fileparts(handles.root_dir);
+    list = [list,fullfile(base_dir,dcms(i).name)];
+end
+bundle_process(list,dst_dir);
+guidata(hObject, handles);
+
+
+

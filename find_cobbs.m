@@ -10,12 +10,11 @@
 %% Find_cobbs
 % Find cobbs angle given a spine line
 % Input: 
-%   spine line
+%   spine line (interpolated)
 % Output:
-%   couple: position couple
-%   angle: cobbs angle
-%   varargout{1}: first couple lines
-%   varargout{2}: second couple lines
+%   couple: position couple (upper/lower vertebra)
+%   angle: cobbs angle (right: >0; left:<0)
+%   varargout{1}: coupled lines perpendicular lines
 function [couple,angle,varargout] = find_cobbs( line )
 
 tanl = zeros(size(line));
@@ -37,16 +36,23 @@ diffs = angl(2:end)-angl(1:end-1);
 
 [~,cob_id] = sort(abs(diffs),'descend'); 
 if(length(cob_id)>3)
-cob_id=cob_id(1:3);
+    cob_id=cob_id(1:3);
 end
+
 [~,s_cob_id] = sort(cob_id);
 cob_id = cob_id(s_cob_id);
 
-angle = 360*diffs(cob_id)/(2*pi);
+%angle = 360*diffs(cob_id)/(2*pi);
+angle = rad2deg(diffs(cob_id));
 couple = [];
 for i = 1:length(angle) 
+    if(abs(angle(i))<10)
+        continue
+    end
     couple = [couple;line(locs(cob_id(i):cob_id(i)+1),:)];
 end
+cob_id = cob_id(abs(angle)>=10);
+angle = angle(abs(angle)>=10);
 
 if nargout>2
     pen_lines = [];
@@ -68,6 +74,7 @@ end % end if
 
 end % end function
 
+%% draw perpendicular lines
 % return value:
 %  | y1 y2 |
 %  | x1 x2 |
